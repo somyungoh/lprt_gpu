@@ -22,9 +22,10 @@ class mesh;
 class shape {
 public:
 	//constructors
-	__device__ shape();
-	__device__ shape(const vec3 &center, const material &m, float size, int TYPE, int ID);
-	__device__ virtual ~shape();
+	__device__ shape() {};
+	__device__ shape(const vec3 &center, const material &m, float size, int TYPE, int ID) 
+		: center(center), mat(m), shapeType(TYPE), shapeSize(size), id(ID){};
+	__device__ virtual ~shape() {};
 
 	enum TYPE {PLANE, SPHERE, TRIANGLE, RECTANGLE, MESH};
 

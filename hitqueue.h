@@ -30,7 +30,7 @@ public:
     }
 
     __device__ void push(const hitrec &h){
-        //m_queue.push_back(h);
+       //m_queue.push_back(h);
     
         // TODO: sorting if not arranged
     }

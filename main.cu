@@ -5,7 +5,7 @@
 #include "ray.h"
 #include "hit.h"
 //#include "material.h"
-//#include "shape.h"
+#include "shape.h"
 #include "camera.h"
 
 #define WIDTH   800
@@ -39,19 +39,19 @@ void check_cuda(cudaError_t result, char const *const func, const char *const fi
     }
 }
 
-// // generate scene
-// __global__ void create_scene(shape **scene, camera **cam) {
-// 	if (threadIdx.x == 0 && blockIdx.x == 0) {
-//         scene[0] = new plane(vec3(0, -1, 0), vec3(0, 1, 0), vec3(1, 0, 0),
-//                                 material(color(1, 1, 1), material::DR), 100);
-//         scene[1] = new sphere(vec3(0, 0, 0), 0.5,
-// 								material(color(1, 0, 0), material::DR), 200);
-// 		*cam = new camera(vec3(0,1,-5),
-// 						vec3(0, 1, 0),
-// 						vec3(0, 0, 0),
-// 						45, WIDTH, HEIGHT);
-//     }
-// }
+// generate scene
+__global__ void create_scene(shape **scene, camera **cam) {
+	if (threadIdx.x == 0 && blockIdx.x == 0) {
+        scene[0] = new plane(vec3(0, -1, 0), vec3(0, 1, 0), vec3(1, 0, 0),
+                                material(color(1, 1, 1), material::DR), 100);
+        scene[1] = new sphere(vec3(0, 0, 0), 0.5,
+								material(color(1, 0, 0), material::DR), 200);
+		*cam = new camera(vec3(0,1,-5),
+						vec3(0, 1, 0),
+						vec3(0, 0, 0),
+						45, WIDTH, HEIGHT);
+	}
+}
 
 
 __global__ void render(float *fb, int max_x, int max_y) {
@@ -207,12 +207,15 @@ int main(int argc, char* argv[]) {
 
 	
 	// scene setup
-	//shape   **scene;
-	//checkCudaErrors(cudaMalloc((void **)&scene, 2*sizeof(shape *)));
-	camera  **cam;
-	checkCudaErrors(cudaMalloc((void **)&cam, sizeof(camera *)));
+	shape   **d_scene;
+	checkCudaErrors(cudaMalloc((void **)&d_scene, 2*sizeof(shape *)));
+	camera  **d_camera;
+	checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
+    create_scene<<<1,1>>>(d_scene, d_camera);
+    checkCudaErrors(cudaGetLastError());
+    checkCudaErrors(cudaDeviceSynchronize());
 
-
+	std::cout << "DEVICE::Scene initialization success.\n";
 	
 
 
