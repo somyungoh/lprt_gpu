@@ -2,7 +2,7 @@
 #define SM_HIT_H_
 
 #include "vec3.h"
-#include <queue>
+// #include <queue>
 
 class shape;
 
@@ -30,6 +30,6 @@ struct compareHitRec {
 
 
 // this is for storing all the hit objects from raycast
-typedef std::priority_queue<hitrec, std::vector<hitrec>, compareHitRec> hitqueue;
+// typedef std::priority_queue<hitrec, std::vector<hitrec>, compareHitRec> hitqueue;
 
 #endif // !SM_HIT_H_

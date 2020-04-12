@@ -13,7 +13,8 @@
 #include "material.h"
 // #include "bvh.h"
 #include "vec3.h"
-#include "hit.h"
+//#include "hit.h"
+#include "hitqueue.h"
 
 
 class mesh;

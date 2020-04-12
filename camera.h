@@ -13,6 +13,8 @@
 ******************************************************/
 
 #include "ray.h"
+#include "material.h"
+#include "shape.h"
 
 class camera{
 public:
