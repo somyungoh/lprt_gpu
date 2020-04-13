@@ -46,9 +46,7 @@ public:
     }
 
     __device__ hitrec pop() {
-       m_nTop--;
-
-        return hitrec();
+        return m_arr[m_nTop--];
     }
 
 private:

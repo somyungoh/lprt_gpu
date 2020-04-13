@@ -47,7 +47,7 @@ __global__ void create_scene(shape **scene, camera **cam) {
 	if (threadIdx.x == 0 && blockIdx.x == 0) {
         scene[0] = new plane(vec3(0, -1, 0), vec3(0, 1, 0), vec3(1, 0, 0),
                                 material(color(1, 1, 1), material::DR), 100);
-        scene[1] = new sphere(vec3(0, 1, 0), 0.5,
+        scene[1] = new sphere(vec3(0, 0.5, 0), 0.5,
 								material(color(1, 0, 0), material::DR), 200);
 		*cam = new camera(vec3(0,1,-5),
 						vec3(0, 1, 0),
@@ -66,34 +66,58 @@ __global__ void render(float *fb, int max_x, int max_y, camera **cam, shape **wo
     int j = threadIdx.y + blockIdx.y * blockDim.y;
 	if((i >= max_x) || (j >= max_y)) return;
 	
+	int pixel_index = j*max_x*3 + i*3;
+	
 	// generate ray
 	// float xf = x;
 	// float yf = y;
 	// samplePos(xf, yf, i);			// grab sampling position
 	
 	// ********     R   A   Y   C   A   S   T     ******** //
+
+	// primary ray
 	ray	r	= (*cam)->getRay((float)i, (float)j);	// get ray from world coordinate
 	color c(0,0,0);
 
-	int pixel_index = j*max_x*3 + i*3;
-	
-    // fb[pixel_index + 1] = float(j) / max_y;
-	// fb[pixel_index + 0] = float(i) / max_x;
-	// fb[pixel_index + 2] = 0.2;
-	
 	// intersection test
 	hitqueue hits;
 	
 	for(int i = 0; i < 2 ; i++)
 		world[i]->intersection(r, hits);
 	
+	vec3 p_light(0, 1.2, -0.5);
+	// primary hit
+
+	// shadow ray
 	if(!hits.isEmpty()){
+		
+		// shadow casting
+		hitqueue shits;
+		vec3 hitP = hits.top().hitP;
+		ray sr = ray(hitP + hits.top().normal *0.0001, normalize(p_light - hitP));
+		
+		world[1]->intersection(sr, shits);
+		float cost = 1.0;
+
+		// compute D/R
+		if(shits.size() > 1){
+			float t0 = shits.pop().t;
+			float t1 = shits.pop().t;
+			cost = t1 - t0;
+			
+			// smooth out
+			cost = powf(cost, 4.0);
+		}
+
 		// basic shading
 		color c_obj = hits.top().object->get_mat().Diffuse();
 		vec3  p_obj = hits.top().hitP;
 		vec3  p_lgt = vec3(0, 2, -0.5);
 		vec3  n_obj = hits.top().normal;
-		c = c_obj * dot(normalize(p_lgt - p_obj), n_obj);
+		float dott  = dot(normalize(p_lgt - p_obj), n_obj);
+		
+		// composite
+		c = c_obj * (1 - cost) * dott;
 	}
 	fb[pixel_index + 0] = c[0];
 	fb[pixel_index + 1] = c[1];
