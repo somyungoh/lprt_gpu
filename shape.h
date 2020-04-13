@@ -206,6 +206,7 @@ public:
 	};
 
 	__device__ bool intersection(const ray &ray, hitqueue &hits) const {
+		
 		vec3 oc = ray.origin() - center;				 // sphere center -> ray origin
 														// solving quadric equation for t
 		//float a = dot(ray.direction(), ray.direction()); //since we use normalized, its always 1
@@ -261,6 +262,7 @@ public:
 
 			hits.push(hitrec(t, this, u, v, intersection_point, normal));
 		}
+
 		return true;
 	};
 

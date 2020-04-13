@@ -15,6 +15,9 @@
 
 // CUDA frame block
 float *fb;
+shape   **d_scene;
+camera  **d_camera;
+
 // GLUT display map
 float *display_map;
  
@@ -44,7 +47,7 @@ __global__ void create_scene(shape **scene, camera **cam) {
 	if (threadIdx.x == 0 && blockIdx.x == 0) {
         scene[0] = new plane(vec3(0, -1, 0), vec3(0, 1, 0), vec3(1, 0, 0),
                                 material(color(1, 1, 1), material::DR), 100);
-        scene[1] = new sphere(vec3(0, 0, 0), 0.5,
+        scene[1] = new sphere(vec3(0, 1, 0), 0.5,
 								material(color(1, 0, 0), material::DR), 200);
 		*cam = new camera(vec3(0,1,-5),
 						vec3(0, 1, 0),
@@ -53,16 +56,49 @@ __global__ void create_scene(shape **scene, camera **cam) {
 	}
 }
 
+__device__ color raycast(const ray &r){
+	return color(0.7, 0.2, 0.3);
+}
 
-__global__ void render(float *fb, int max_x, int max_y) {
+
+__global__ void render(float *fb, int max_x, int max_y, camera **cam, shape **world) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
-    if((i >= max_x) || (j >= max_y)) return;
-    int pixel_index = j*max_x*3 + i*3;
-    fb[pixel_index + 0] = float(i) / max_x;
-    fb[pixel_index + 1] = float(j) / max_y;
-	fb[pixel_index + 2] = 0.2;
+	if((i >= max_x) || (j >= max_y)) return;
 	
+	// generate ray
+	// float xf = x;
+	// float yf = y;
+	// samplePos(xf, yf, i);			// grab sampling position
+	
+	// ********     R   A   Y   C   A   S   T     ******** //
+	ray	r	= (*cam)->getRay((float)i, (float)j);	// get ray from world coordinate
+	color c(0,0,0);
+
+	int pixel_index = j*max_x*3 + i*3;
+	
+    // fb[pixel_index + 1] = float(j) / max_y;
+	// fb[pixel_index + 0] = float(i) / max_x;
+	// fb[pixel_index + 2] = 0.2;
+	
+	// intersection test
+	hitqueue hits;
+	
+	for(int i = 0; i < 2 ; i++)
+		world[i]->intersection(r, hits);
+	
+	if(!hits.isEmpty()){
+		// basic shading
+		color c_obj = hits.top().object->get_mat().Diffuse();
+		vec3  p_obj = hits.top().hitP;
+		vec3  p_lgt = vec3(0, 2, -0.5);
+		vec3  n_obj = hits.top().normal;
+		c = c_obj * dot(normalize(p_lgt - p_obj), n_obj);
+	}
+	fb[pixel_index + 0] = c[0];
+	fb[pixel_index + 1] = c[1];
+	fb[pixel_index + 2] = c[2];
+
 	// int pixel_index = j*max_x + i;
     // curandState local_rand_state = rand_state[pixel_index];
     // vec3 col(0,0,0);
@@ -181,14 +217,13 @@ void display() {
     // Render our buffer
     dim3 blocks(WIDTH/tx+1,HEIGHT/ty+1);
     dim3 threads(tx,ty);
-    render<<<blocks, threads>>>(fb, WIDTH, HEIGHT);
+    render<<<blocks, threads>>>(fb, WIDTH, HEIGHT, d_camera, d_scene);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
     stop = clock();
     double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
     //std::cerr << "took " << timer_seconds << " seconds.\n";
-
-
+	
 	glClear(GL_COLOR_BUFFER_BIT);
 	glRasterPos2i(0, 0);
 	glDrawPixels(WIDTH, HEIGHT, GL_RGB, GL_FLOAT, fb);
@@ -223,9 +258,7 @@ int main(int argc, char* argv[]) {
 
 	
 	// scene setup
-	shape   **d_scene;
 	checkCudaErrors(cudaMalloc((void **)&d_scene, 2*sizeof(shape *)));
-	camera  **d_camera;
 	checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
     create_scene<<<1,1>>>(d_scene, d_camera);
     checkCudaErrors(cudaGetLastError());
